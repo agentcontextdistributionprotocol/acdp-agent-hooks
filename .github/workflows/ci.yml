@@ -26,7 +26,7 @@ jobs:
       # registries/otel-attributes.md at this pinned commit, so a spec change
       # to that registry reaches this repo as a reviewed bump-spec PR.
       - name: Check out the ACDP spec (pinned)
-        uses: agentcontextdistributionprotocol/acdp-ci/actions/checkout-spec@015910153b61c32abbe018afe85d44868897bf3b # v1
+        uses: agentcontextdistributionprotocol/acdp-ci/actions/checkout-spec@4ade9f1a3e7035033da7a57587ceda29490353cd # v1
         with:
           ref: 75fb0da5d2baf5c5ce2f1fbf314b845e6cbe161a
       - uses: actions/setup-python@v7
