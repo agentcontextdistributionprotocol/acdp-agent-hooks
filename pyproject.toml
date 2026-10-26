@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "acdp-agent-hooks"
+version = "0.1.0"
+description = "Agent-framework hooks that sign tool results and final outputs and publish them to an ACDP registry, with derived_from lineage and OpenTelemetry attributes."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Agent Context Distribution Protocol" }]
+keywords = ["acdp", "provenance", "agents", "claude-agent-sdk", "openai-agents", "opentelemetry"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    "acdp>=0.17.3",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+claude = ["claude-agent-sdk>=0.2,<0.3"]
+openai = ["openai-agents>=0.24"]
+otel = ["opentelemetry-api>=1.27"]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "coverage[toml]>=7.6",
+    "mypy>=1.13",
+    "ruff==0.16.9",
+    "opentelemetry-sdk>=1.27",
+]
+
+[project.scripts]
+acdp-hooks = "acdp_hooks.cli:main"
+
+[project.urls]
+Homepage = "https://agentcontextdistributionprotocol.io"
+Source = "https://github.com/agentcontextdistributionprotocol/acdp-agent-hooks"
+Issues = "https://github.com/agentcontextdistributionprotocol/acdp-agent-hooks/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/acdp_hooks"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["integration: publishes to a real ACDP registry (set ACDP_IT_REGISTRY)"]
+addopts = "-m 'not integration'"
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+files = ["src/acdp_hooks"]
+
+[[tool.mypy.overrides]]
+# The acdp wheel is a PyO3 extension that ships no type information.
+module = ["acdp"]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF", "DTZ", "PIE", "PT", "RET", "TID"]
+ignore = ["E501", "W191", "RUF002", "RUF003"]
+
+[tool.coverage.run]
+source = ["acdp_hooks"]
+branch = false
+
+[tool.coverage.report]
+# A ratchet: raise it when coverage genuinely improves, never lower it to
+# make a red build green.
+fail_under = 95
+precision = 2
+show_missing = true

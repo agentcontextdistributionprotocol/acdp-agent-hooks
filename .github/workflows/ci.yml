@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: lint + types + tests (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      # test_otel compares the emitted attribute names with the spec's
+      # registries/otel-attributes.md at this pinned commit, so a spec change
+      # to that registry reaches this repo as a reviewed bump-spec PR.
+      - name: Check out the ACDP spec (pinned)
+        uses: agentcontextdistributionprotocol/acdp-ci/actions/checkout-spec@015910153b61c32abbe018afe85d44868897bf3b # v1
+        with:
+          ref: 75fb0da5d2baf5c5ce2f1fbf314b845e6cbe161a
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: python -m pip install --upgrade pip && pip install -e ".[claude,openai,otel,dev]"
+      - name: Format (ruff format --check)
+        run: ruff format --check .
+      - name: Lint (ruff check, zero warnings)
+        run: ruff check .
+      - name: Types (mypy --strict)
+        run: mypy
+      - name: Unit tests (coverage-gated)
+        run: |
+          coverage run -m pytest -q
+          coverage report
+
+  minimal:
+    name: minimal install (no extras)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install without extras
+        run: python -m pip install --upgrade pip && pip install .
+      - name: Core imports and OTel is a no-op without the extra
+        run: |
+          python - <<'PY'
+          import acdp_hooks
+          from acdp_hooks import otel
+          assert not otel.available()
+          with otel.publish_span() as s:
+              s.set({"acdp.ctx_id": "x"})
+          print("ok", acdp_hooks.__version__)
+          PY
+          acdp-hooks keygen > /dev/null
+
+  integration:
+    name: integration (local acdp-registry-rs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Start registry
+        run: docker compose -f tests/integration/compose.yml up -d --wait
+      - name: Install
+        run: python -m pip install --upgrade pip && pip install -e ".[claude,openai,otel,dev]"
+      - name: Integration tests
+        env:
+          ACDP_IT_REGISTRY: http://localhost:8443
+        run: pytest -m integration -q
+      - name: Registry logs
+        if: failure()
+        run: docker compose -f tests/integration/compose.yml logs registry
+      - name: Stop registry
+        if: always()
+        run: docker compose -f tests/integration/compose.yml down -v
+
+  build:
+    name: build + twine check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip build twine
+      - run: python -m build
+      - run: twine check --strict dist/*
