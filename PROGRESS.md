@@ -8,6 +8,5 @@
   `agentcontextdistributionprotocol`, repo `acdp-agent-hooks`, workflow
   `release.yml`, environment `pypi` (the environment already exists in the repo).
   Then re-run the failed jobs of run 40416968747; no new tag is needed.
-- AWAITING-HUMAN: branch protection on `main`. The org `auto-merge` workflow
-  refuses to arm because `main` has no required status checks
-  (`protected=false`). Adopt it with acdp-ci `scripts/standardize.sh`.
+- DONE: branch protection on `main` matches the acdp-ci `standardize.sh`
+  baseline (`--check` in sync, six required checks), so auto-merge can arm.
